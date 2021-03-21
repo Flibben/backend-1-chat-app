@@ -1,3 +1,10 @@
-<h1 class="mt-4">Dashboard</h1>
+<h1 class="mt-4">Chat App</h1>
 <p class="lead mb-3">Welcome <%= name%></p>
 <a href="/users/logout" class="btn btn-secondary">Logout</a>
+<ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/socket.io.js"></script>
