@@ -53,6 +53,16 @@ app.use(express.urlencoded({ extended: false }));
 //Set public folder
 app.use(express.static('public'));
 
+// Express Session
+app.use(
+  session({
+    secret: 'super secret secret',
+    resave: true,
+    saveUninitialized: true,
+    // store: sessionStore,
+  })
+);
+
 // Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
@@ -79,16 +89,6 @@ mongoose
 //   mongooseConnection: mongoose.connection,
 //   collection: 'sessions',
 // });
-
-// Express Session
-app.use(
-  session({
-    secret: 'super secret secret',
-    resave: true,
-    saveUninitialized: true,
-    // store: sessionStore,
-  })
-);
 
 // EJS
 app.use(expressLayouts);
