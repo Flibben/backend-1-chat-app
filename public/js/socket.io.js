@@ -12,8 +12,9 @@ form.addEventListener('submit', function (e) {
   }
 });
 
-socket.on('chat message', (msg) => {
+socket.on('chat message', (msg, userName) => {
   const item = document.createElement('li');
-  item.textContent = msg;
+  const userMsg = `${userName}: ${msg}`;
+  item.textContent = userMsg;
   messages.appendChild(item);
 });

@@ -12,33 +12,6 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
-//simplechatt breake out in to own file
-
-// const wrap = (middleware) => (socket, next) =>
-//   middleware(socket.request, {}, next);
-// io.use(wrap(session({ secret: 'this doesnt matter' })));
-// io.use(wrap(passport.initialize()));
-// io.use(wrap(passport.session()));
-
-// io.use((socket, next) => {
-//   console.log(socket.request.email);
-//   if (socket.request.user) {
-//     next();
-//   } else {
-//     next(new Error('unauthorized'));
-//   }
-// });
-
-io.on('connection', (socket) => {
-  console.log('user connected');
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg);
-  });
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
-  });
-});
-
 dotenv.config({ path: './config.env' });
 
 //Passport Config
@@ -47,21 +20,17 @@ require('./config/passport')(passport);
 // DB Config
 const db = process.env.DB_CONNECT;
 
+const sessionMiddleware = session({
+  secret: 'backend1',
+  resave: false,
+  saveUninitialized: false,
+});
+app.use(sessionMiddleware);
 //Bodyparser
 app.use(express.urlencoded({ extended: false }));
 
 //Set public folder
 app.use(express.static('public'));
-
-// Express Session
-app.use(
-  session({
-    secret: 'super secret secret',
-    resave: true,
-    saveUninitialized: true,
-    // store: sessionStore,
-  })
-);
 
 // Passport middleware
 app.use(passport.initialize());
@@ -97,6 +66,33 @@ app.set('view engine', 'ejs');
 // Routes
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
+
+const wrap = (middleware) => (socket, next) =>
+  middleware(socket.request, {}, next);
+
+io.use(wrap(sessionMiddleware));
+
+io.use(wrap(passport.initialize()));
+io.use(wrap(passport.session()));
+
+io.use((socket, next) => {
+  console.log(socket.request.user);
+  if (socket.request.user) {
+    next();
+  } else {
+    next(new Error('unauthorized'));
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('user connected');
+  socket.on('chat message', (msg) => {
+    io.emit('chat message', msg, socket.request.user.name);
+  });
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 
