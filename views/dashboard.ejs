@@ -1,10 +1,13 @@
 <h1 class="mt-4">Chat App</h1>
 <p class="lead mb-3">Welcome <%= name%></p>
 <a href="/users/logout" class="btn btn-secondary">Logout</a>
-<ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/socket.io.js"></script>
+<form id="room-form" action="">
+  <input id="room-input" type="text" /><button>Create Room</button>
+</form>
+<ul id="room-list">
+
+</ul>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/socket.io.js"></script>

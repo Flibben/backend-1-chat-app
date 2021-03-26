@@ -1,12 +1,14 @@
 const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
-const mongoose = require('mongoose');
 const flash = require('connect-flash');
 const session = require('express-session');
-// const MongoStore = require('connect-mongo')(session);
 const passport = require('passport');
 const dotenv = require('dotenv');
-const msgSchema = require('./models/Message');
+const mongoose = require('mongoose');
+const MessageModel = require('./models/Message');
+const RoomModel = require('./models/Room');
+const Room = require('./models/Room');
+const { ensureAuthenticated } = require('./config/auth');
 
 const app = express();
 const http = require('http').createServer(app);
@@ -20,12 +22,14 @@ require('./config/passport')(passport);
 // DB Config
 const db = process.env.DB_CONNECT;
 
+//IO middleware
 const sessionMiddleware = session({
   secret: 'backend1',
   resave: false,
   saveUninitialized: false,
 });
 app.use(sessionMiddleware);
+
 //Bodyparser
 app.use(express.urlencoded({ extended: false }));
 
@@ -53,12 +57,6 @@ mongoose
   .then(() => console.log('MongoDB Connected...'))
   .catch((err) => console.log(err));
 
-//Store session in MongoStore
-// const sessionStore = new MongoStore({
-//   mongooseConnection: mongoose.connection,
-//   collection: 'sessions',
-// });
-
 // EJS
 app.use(expressLayouts);
 app.set('view engine', 'ejs');
@@ -67,6 +65,15 @@ app.set('view engine', 'ejs');
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
 
+app.use('/chatroom/:room', ensureAuthenticated, (req, res) => {
+  res.render('rooms', { req });
+});
+
+app.use('/profile/:id', ensureAuthenticated, (req, res) => {
+  res.render('profile', { req });
+});
+
+//Inserting passport as IO middleware
 const wrap = (middleware) => (socket, next) =>
   middleware(socket.request, {}, next);
 
@@ -76,21 +83,53 @@ io.use(wrap(passport.initialize()));
 io.use(wrap(passport.session()));
 
 io.use((socket, next) => {
-  console.log(socket.request.user);
   if (socket.request.user) {
+    let roomId = socket.handshake.headers.referer.split('=').slice(-1)[0];
+    socket.room = roomId;
+
     next();
   } else {
     next(new Error('unauthorized'));
   }
 });
 
-io.on('connection', (socket) => {
-  console.log('user connected');
-  socket.on('chat message', (msg) => {
-    io.emit('chat message', msg, socket.request.user.name);
+io.on('connection', async (socket) => {
+  console.log(`user: ${socket.request.user.name} connected`);
+  socket.join(socket.room);
+
+  //Emit found rooms to create list on cliten
+  const rooms = await RoomModel.find();
+  rooms.forEach((room) => {
+    socket.emit('create room', room);
+  });
+
+  //Emit and save chat message
+  socket.on('chat message', async (msg) => {
+    const doc = MessageModel({
+      userId: socket.request.user._id,
+      channel: socket.room,
+      message: msg,
+    });
+
+    await doc.save();
+    io.to(socket.room).emit('chat message', msg, socket.request.user.name);
   });
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log(`user: ${socket.request.user.name} disconnected`);
+  });
+
+  socket.on('create room', async (room) => {
+    const findDoc = await RoomModel.findOne({ name: room });
+    //When findDOc falsy null, save room
+    if (!findDoc) {
+      const doc = RoomModel({
+        name: room,
+      });
+      await doc.save();
+      io.emit('create room', doc);
+    } else {
+      console.log(`room: ${room} already exists `);
+    }
   });
 });
 
