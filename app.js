@@ -8,7 +8,11 @@ const mongoose = require('mongoose');
 const MessageModel = require('./models/Message');
 const RoomModel = require('./models/Room');
 const Room = require('./models/Room');
+const Image = require('./models/Image');
+const multer = require('multer');
 const { ensureAuthenticated } = require('./config/auth');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const http = require('http').createServer(app);
@@ -61,6 +65,18 @@ mongoose
 app.use(expressLayouts);
 app.set('view engine', 'ejs');
 
+//Multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './public/uploads');
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.fieldname + '-' + Date.now());
+  },
+});
+
+const upload = multer({ storage: storage });
+
 // Routes
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
@@ -69,9 +85,35 @@ app.use('/chatroom/:room', ensureAuthenticated, (req, res) => {
   res.render('rooms', { req });
 });
 
-app.use('/profile/:id', ensureAuthenticated, (req, res) => {
-  res.render('profile', { req });
+app.use('/profile/:id', ensureAuthenticated, async (req, res) => {
+  item = await Image.find({ user: req.user._id });
+  res.render('profile', { req, item });
 });
+
+app.post(
+  '/profile',
+  ensureAuthenticated,
+  upload.single('image'),
+  (req, res, next) => {
+    const obj = {
+      img: {
+        data: fs.readFileSync(
+          path.join(__dirname + '/public/uploads/' + req.file.filename)
+        ),
+        contentType: 'image/png',
+      },
+      user: req.user._id,
+    };
+    Image.create(obj, async (err, item) => {
+      if (err) {
+        console.log(err);
+      } else {
+        await item.save();
+        res.redirect(`/profile/${req.user.name}`);
+      }
+    });
+  }
+);
 
 //Inserting passport as IO middleware
 const wrap = (middleware) => (socket, next) =>
