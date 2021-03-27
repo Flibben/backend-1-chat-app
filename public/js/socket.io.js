@@ -30,6 +30,9 @@ socket.on('chat message', (msg, userName) => {
   messages.appendChild(item);
 });
 
+//load old messages
+socket.on('connection', () => {});
+
 //Room
 //Eventlistener create roomForm
 if (roomForm) {

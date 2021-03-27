@@ -1,5 +1,7 @@
 <h1>Välkommen <%= req.user.name %>  till <%= req.params.room %> chatten!</h1>
-<ul id="chat-messages"></ul>
+<ul id="chat-messages"> 
+    <%- htmlMessageArray %> 
+</ul>
 
 <form id="chat-form" action="">
     <input id="chat-input" autocomplete="off" /><button>Send</button>

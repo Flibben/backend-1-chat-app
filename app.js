@@ -13,6 +13,7 @@ const multer = require('multer');
 const { ensureAuthenticated } = require('./config/auth');
 const fs = require('fs');
 const path = require('path');
+const User = require('./models/User');
 
 const app = express();
 const http = require('http').createServer(app);
@@ -81,9 +82,24 @@ const upload = multer({ storage: storage });
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
 
-app.use('/chatroom/:room', ensureAuthenticated, (req, res) => {
-  res.render('rooms', { req });
+app.use('/chatroom/:room', ensureAuthenticated, async (req, res) => {
+  // let test;
+  messageArray = await MessageModel.find({})
+    .sort({ date: -1 })
+    .limit(10)
+    .populate('userId');
+
+  //fixa ordningen på det här, render körs före att oldmessages har populerats
+  const htmlMessageArray = messageArray
+    .map((message) => {
+      return `<li><a href="/profile/${message.userId.name}">${message.userId.name}</a>: ${message.message}</li>`;
+    })
+    .reverse();
+  // .join(' ');
+  console.log(htmlMessageArray);
+  res.render('rooms', { req, htmlMessageArray: htmlMessageArray.join(' ') });
 });
+// });
 
 app.use('/profile/:id', ensureAuthenticated, async (req, res) => {
   item = await Image.find({ user: req.user._id });
