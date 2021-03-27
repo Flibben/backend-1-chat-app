@@ -84,7 +84,8 @@ app.use('/users', require('./routes/users'));
 
 app.use('/chatroom/:room', ensureAuthenticated, async (req, res) => {
   // let test;
-  messageArray = await MessageModel.find({})
+  console.log(req.query.id);
+  messageArray = await MessageModel.find({ channel: req.query.id })
     .sort({ date: -1 })
     .limit(10)
     .populate('userId');
